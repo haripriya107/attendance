@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin dashboard | Daymark</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="app-page">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="/admin"><span class="brand-mark">D</span><span>daymark</span></a>
+    <p class="nav-caption">WORKSPACE</p>
+    <nav class="side-nav" aria-label="Admin navigation">
+      <button class="nav-item active" data-view="overview"><span class="nav-icon">⌂</span>Overview</button>
+      <button class="nav-item" data-view="employees"><span class="nav-icon">◎</span>Employees</button>
+      <button class="nav-item" data-view="attendance"><span class="nav-icon">◷</span>Attendance</button>
+      <button class="nav-item" data-view="leaves"><span class="nav-icon">▤</span>Leave requests <span class="nav-count" id="leave-count">0</span></button>
+      <button class="nav-item" data-view="departments"><span class="nav-icon">▦</span>Departments</button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="help-card"><span class="help-icon">✦</span><strong>People first</strong><p>Keep your team in sync with a clear view of every workday.</p></div>
+      <div class="sidebar-user"><span class="avatar avatar-plum">AD</span><span><strong id="admin-name">Administrator</strong><small>Workspace admin</small></span><button class="icon-button" id="logout-button" aria-label="Sign out" title="Sign out">↗</button></div>
+    </div>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-button" id="menu-button" aria-label="Toggle menu">☰</button>
+      <div><p class="eyebrow" id="current-date"></p><h1 id="page-title">Overview</h1></div>
+      <div class="topbar-actions"><span class="status-chip"><span class="live-dot"></span> Workspace active</span><span class="avatar avatar-plum" id="top-avatar">AD</span></div>
+    </header>
+    <div id="toast" class="toast" role="status"></div>
+    <section class="view-panel active" id="view-overview">
+      <div class="welcome-banner">
+        <div><p class="eyebrow">YOUR TEAM, AT A GLANCE</p><h2>A good day starts with knowing who's here.</h2><p>Here's what's happening across your workplace today.</p></div>
+        <div class="banner-art" aria-hidden="true"><span class="art-sun"></span><span class="art-circle"></span><span class="art-line"></span><span class="art-plant">✳</span></div>
+      </div>
+      <div class="metric-grid">
+        <article class="metric-card"><div class="metric-top"><span>Total employees</span><span class="metric-icon icon-blue">◎</span></div><strong id="metric-employees">—</strong><small>Active team members</small></article>
+        <article class="metric-card"><div class="metric-top"><span>Present today</span><span class="metric-icon icon-green">↗</span></div><strong id="metric-present">—</strong><small><span class="metric-dot green-dot"></span>Checked in today</small></article>
+        <article class="metric-card"><div class="metric-top"><span>On leave</span><span class="metric-icon icon-amber">☼</span></div><strong id="metric-leave">—</strong><small>Approved time off today</small></article>
+        <article class="metric-card"><div class="metric-top"><span>Not yet in</span><span class="metric-icon icon-rose">◷</span></div><strong id="metric-absent">—</strong><small>Absent or not checked in</small></article>
+      </div>
+      <div class="overview-grid">
+        <section class="surface chart-card">
+          <div class="section-heading">
+            <div><h3 id="attendance-heading">Attendance overview</h3><p class="muted" id="attendance-period-description">Loading attendance…</p></div>
+            <label class="chart-period-control" for="attendance-period">Period
+              <select id="attendance-period">
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
+            </label>
+          </div>
+          <div class="chart" id="attendance-chart" aria-label="Attendance chart"></div>
+          <div class="empty-state hidden" id="attendance-chart-empty">No attendance records for this period.</div>
+          <div class="period-summary" aria-label="Attendance summary for selected period">
+            <div><span>Present</span><strong id="period-present">—</strong><small>employee-days</small></div>
+            <div><span>Absent</span><strong id="period-absent">—</strong><small>weekdays to date</small></div>
+            <div><span>On leave</span><strong id="period-leave">—</strong><small>approved weekdays to date</small></div>
+            <div><span>Hours logged</span><strong id="period-hours">—</strong><small>completed shifts</small></div>
+          </div>
+          <div class="chart-legend"><span><i></i>Employees checked in</span></div>
+        </section>
+        <section class="surface recent-card">
+          <div class="section-heading"><div><h3>Latest check-ins</h3><p class="muted">A live view of attendance</p></div><button class="text-button" data-open-view="attendance">View report →</button></div>
+          <div class="compact-list" id="recent-list"></div>
+        </section>
+      </div>
+      <section class="surface pending-preview">
+        <div class="section-heading"><div><h3>Needs your attention</h3><p class="muted">Leave requests waiting for review</p></div><button class="text-button" data-open-view="leaves">Review requests →</button></div>
+        <div id="pending-preview" class="pending-list"></div>
+      </section>
+    </section>
+    <section class="view-panel" id="view-employees">
+      <div class="section-intro"><div><p class="eyebrow">YOUR PEOPLE</p><h2>Employee directory</h2><p class="muted">Manage profiles, roles, and employee access.</p></div><button class="button button-primary" id="add-employee">＋ Add employee</button></div>
+      <section class="surface table-surface">
+        <div class="toolbar"><div class="search-wrap"><span>⌕</span><input id="employee-search" type="search" placeholder="Search name, ID, department..." aria-label="Search employees"></div><span class="results-count" id="employee-count"></span></div>
+        <div class="table-wrap"><table><thead><tr><th>EMPLOYEE</th><th>DEPARTMENT</th><th>POSITION</th><th>EMPLOYMENT</th><th>ROLE</th><th>STATUS</th><th></th></tr></thead><tbody id="employee-rows"></tbody></table></div>
+        <div class="empty-state hidden" id="employee-empty">No employees found. Try a different search or add a new employee.</div>
+      </section>
+    </section>
+    <section class="view-panel" id="view-attendance">
+      <div class="section-intro"><div><p class="eyebrow">TIME & PRESENCE</p><h2>Attendance report</h2><p class="muted">Review employee check-ins and working hours.</p></div></div>
+      <section class="surface table-surface">
+        <div class="toolbar report-toolbar">
+          <label>From <input id="report-from" type="date"></label><label>To <input id="report-to" type="date"></label>
+          <select id="report-employee" aria-label="Filter by employee"><option value="">All employees</option></select>
+          <button class="button button-secondary" id="filter-report">Apply filters</button>
+          <button class="text-button" id="export-report">Export CSV ↓</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>DATE</th><th>EMPLOYEE</th><th>DEPARTMENT</th><th>CHECK IN</th><th>CHECK OUT</th><th>HOURS</th><th>STATUS</th></tr></thead><tbody id="attendance-rows"></tbody></table></div>
+        <div class="empty-state hidden" id="attendance-empty">No attendance records for this period.</div>
+      </section>
+    </section>
+    <section class="view-panel" id="view-leaves">
+      <div class="section-intro"><div><p class="eyebrow">TIME OFF</p><h2>Leave requests</h2><p class="muted">Review and manage employee time-off applications.</p></div><select id="leave-filter" class="select-control"><option value="">All requests</option><option>Pending</option><option>Approved</option><option>Rejected</option></select></div>
+      <section class="surface table-surface"><div class="table-wrap"><table><thead><tr><th>EMPLOYEE</th><th>DATES</th><th>REASON</th><th>SUBMITTED</th><th>STATUS</th><th>ACTION</th></tr></thead><tbody id="leave-rows"></tbody></table></div><div class="empty-state hidden" id="leave-empty">No leave requests to show.</div></section>
+    </section>
+    <section class="view-panel" id="view-departments">
+      <div class="section-intro"><div><p class="eyebrow">ORGANIZATION</p><h2>Departments</h2><p class="muted">Group employees by the teams they work with.</p></div></div>
+      <section class="surface department-surface"><form id="department-form" class="inline-form"><label for="department-name">Add a department</label><div><input id="department-name" placeholder="e.g. Operations" required maxlength="80"><button class="button button-primary" type="submit">Add department</button></div></form><div class="department-grid" id="department-list"></div><p class="empty-state hidden" id="department-empty">No departments yet. Add one above to get started.</p></section>
+    </section>
+  </main>
+  <dialog id="employee-dialog" class="modal">
+    <form id="employee-form" class="modal-card">
+      <div class="modal-heading"><div><p class="eyebrow" id="employee-form-kicker">NEW TEAM MEMBER</p><h2 id="employee-form-title">Add employee</h2></div><button class="icon-button" type="button" data-close-dialog aria-label="Close">×</button></div>
+      <input type="hidden" id="employee-id">
+      <div class="form-grid">
+        <label>Full name<input id="form-name" required autocomplete="name"></label>
+        <label>Work email<input id="form-email" type="email" required autocomplete="email"></label>
+        <label>Employee ID<input id="form-code" placeholder="Auto-generated if blank"></label>
+        <label>Phone number<input id="form-phone" type="tel"></label>
+        <label>Job position<input id="form-position" placeholder="e.g. Product designer"></label>
+        <label>Department<select id="form-department"><option value="">Unassigned</option></select></label>
+        <label>Joining date<input id="form-joining" type="date"></label>
+        <label>Employment type<select id="form-employment"><option>Full-time</option><option>Part-time</option><option>Contract</option><option>Intern</option></select></label>
+        <label>Role<select id="form-role"><option value="employee">Employee</option><option value="admin">Admin</option></select></label>
+        <label id="password-field">Temporary password<input id="form-password" type="password" minlength="8" autocomplete="new-password"><small>At least 8 characters. Share it securely.</small></label>
+        <label class="checkbox-label hidden" id="active-field"><input id="form-active" type="checkbox" checked> Account active</label>
+      </div>
+      <p class="form-message" id="employee-form-message" role="status"></p>
+      <div class="modal-actions"><button class="button button-secondary" type="button" data-close-dialog>Cancel</button><button class="button button-primary" type="submit" id="save-employee">Create account</button></div>
+    </form>
+  </dialog>
+  <dialog id="password-reset-dialog" class="modal">
+    <form id="password-reset-form" class="modal-card">
+      <div class="modal-heading"><div><p class="eyebrow">ACCOUNT SECURITY</p><h2>Reset employee password</h2></div><button class="icon-button" type="button" data-close-password-dialog aria-label="Close">×</button></div>
+      <input type="hidden" id="reset-employee-id">
+      <p class="muted">Set a new temporary password for <strong id="reset-employee-name"></strong>. It will not be shown again after saving.</p>
+      <div class="form-grid">
+        <label>Temporary password<input id="reset-temporary-password" type="password" minlength="8" autocomplete="new-password" required></label>
+        <label>Confirm temporary password<input id="reset-confirm-password" type="password" minlength="8" autocomplete="new-password" required></label>
+      </div>
+      <p class="muted">The employee must change this password at their next sign-in.</p>
+      <p class="form-message" id="password-reset-message" role="status"></p>
+      <div class="modal-actions"><button class="button button-secondary" type="button" data-close-password-dialog>Cancel</button><button class="button button-primary" type="submit" id="reset-password-submit">Reset password</button></div>
+    </form>
+  </dialog>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

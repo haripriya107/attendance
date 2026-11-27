@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101b33">
+  <title>Sign in | Daymark</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page">
+  <main class="login-layout">
+    <section class="login-story">
+      <a class="brand brand-light" href="/"><span class="brand-mark">D</span><span>daymark</span></a>
+      <div class="story-copy">
+        <p class="eyebrow">PEOPLE, PRESENT</p>
+        <h1>A better day at work<br>starts with being here.</h1>
+        <p>One calm place to manage attendance, time off, and the people behind it all.</p>
+      </div>
+      <div class="story-foot"><span class="live-dot"></span> Your workplace, in sync</div>
+    </section>
+    <section class="login-panel">
+      <div class="login-form-wrap">
+        <div class="mobile-brand"><a class="brand" href="/"><span class="brand-mark">D</span><span>daymark</span></a></div>
+        <p class="eyebrow">WELCOME BACK</p>
+        <h2>Sign in to your account</h2>
+        <p class="muted">Use your work email to continue.</p>
+        <form id="login-form" class="form-stack">
+          <label for="email">Work email</label>
+          <input id="email" name="email" type="email" autocomplete="username" placeholder="you@company.com" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+          <p class="form-message" id="login-message" role="status"></p>
+          <button class="button button-primary button-wide" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        </form>
+        <p class="login-note">Forgot your password or need an account? Contact your administrator. They can reset it but cannot retrieve your current password.</p>
+      </div>
+      <footer class="login-footer">© <span id="year"></span> Daymark · Office attendance</footer>
+    </section>
+  </main>
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+    document.getElementById("login-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = document.getElementById("login-message");
+      const button = event.currentTarget.querySelector("button");
+      button.disabled = true;
+      message.textContent = "";
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Unable to sign in.");
+        window.location.assign(result.redirect);
+      } catch (error) {
+        message.textContent = error.message || "Unable to connect. Please try again.";
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

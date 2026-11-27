@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Access denied | Daymark</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="forbidden-page">
+  <main class="forbidden-card">
+    <a class="brand" href="{{ dashboard_url }}"><span class="brand-mark">D</span><span>daymark</span></a>
+    <p class="eyebrow">ROLE-BASED ACCESS</p>
+    <h1>This page isn't available to this account.</h1>
+    <p class="muted">Your signed-in account doesn't have permission to open this dashboard.</p>
+    <a class="button button-primary" href="{{ dashboard_url }}">Go to {{ dashboard_name }} <span aria-hidden="true">→</span></a>
+    <button class="button button-secondary" id="sign-out" type="button">Sign out</button>
+    <p class="form-message" id="sign-out-message" role="status"></p>
+  </main>
+  <script>
+    document.getElementById("sign-out").addEventListener("click", async () => {
+      const message = document.getElementById("sign-out-message");
+      try {
+        const response = await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "same-origin"
+        });
+        if (!response.ok) throw new Error("Unable to sign out. Please try again.");
+        window.location.assign("/login");
+      } catch (error) {
+        message.textContent = error.message || "Unable to sign out. Please try again.";
+      }
+    });
+  </script>
+</body>
+</html>

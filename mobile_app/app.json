@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Daymark Office Attendance",
+    "slug": "mobile_app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/daymark-attendance-icon.png",
+    "scheme": "mobileapp",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon"
+    },
+    "android": {
+      "package": "com.haripriya01.attendance",
+      "adaptiveIcon": {
+        "backgroundColor": "#EAF3FF",
+        "foregroundImage": "./assets/images/daymark-adaptive-foreground.png",
+        "backgroundImage": "./assets/images/daymark-adaptive-background.png",
+        "monochromeImage": "./assets/images/daymark-adaptive-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "server",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#EAF3FF",
+          "image": "./assets/images/daymark-splash.png",
+          "imageWidth": 220
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "c7d478d8-916d-4cc7-bf83-9a15a64308f1"
+      }
+    }
+  }
+}
