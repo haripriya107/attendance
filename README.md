@@ -20,29 +20,32 @@ Without `DATABASE_URL`, local development uses the existing SQLite file. Do not 
 
 ## Render deployment preparation
 
-`render.yaml` defines a paid Render web service and managed PostgreSQL database in Singapore, using the existing Gunicorn command and public `/api/health` check. Render provides HTTPS and the internal PostgreSQL connection. The blueprint generates `FLASK_SECRET_KEY` and injects `DATABASE_URL` from the managed database; no credentials are stored in this repository. Plans and region are editable in the blueprint before provisioning; check current Render pricing before confirming.
+`render.yaml` defines a free Render web service using the existing Gunicorn command and public `/api/health` check. Render provides HTTPS and a stable public service URL. `DATABASE_URL` is intentionally supplied as a secret in the Render dashboard, so the blueprint does not create a paid (or expiring free Render) database. The lowest-cost option is Render Free for Flask plus Neon Free PostgreSQL.
+
+Both free tiers have limits and are not an uptime-guaranteed production setup. Render spins down an idle free web service after 15 minutes; waking it can take about one minute, and its local filesystem is ephemeral. Neon Free compute scales to zero and has usage/storage limits and no production SLA. Do not store application data on the Render filesystem. A stable HTTPS URL does not guarantee that the first request after idle will respond quickly enough for the current APK. For always-on service and production-grade availability, paid hosting is required.
 
 The environment is configured for production sessions (`Secure`, `HttpOnly`, `SameSite=Lax`). `CORS_ALLOWED_ORIGINS` is optional and should contain exact HTTPS origins only if a browser-based client is hosted on another origin. The Android app uses native requests and does not need CORS. The hosted web interface and API share one origin by default.
 
 ### Required accounts and values
 
-- A Render account with a paid service plan, and a private GitHub/GitLab repository Render can access. The root `.gitignore` excludes local databases, APKs, signing keys, local environment files, IDE metadata, and generated build output.
+- A Render account and a private GitHub/GitLab repository Render can access. The root `.gitignore` excludes local databases, APKs, signing keys, local environment files, IDE metadata, and generated build output.
+- A Neon account and a free PostgreSQL project. Keep its connection string private and enter it as `DATABASE_URL` in the Render dashboard.
 - An Expo account for EAS APK builds. `mobile_app\app.json` already contains an EAS project ID and the existing Android package ID is `com.haripriya01.attendance`.
 - The real Render service URL (available only after provisioning); set that exact `https://...` URL as `EXPO_PUBLIC_API_URL` in the Expo project's `production` environment. Do not guess it or send it to the app before the backend exists.
 - Confirm `OFFICE_TIMEZONE` and `OFFICIAL_CHECK_IN_TIME` for the office. The blueprint defaults to `Asia/Kolkata` and `09:30`.
 - A separate exact HTTPS web origin only if a web client will be hosted on a different domain. No CORS origin is required for the native APK or same-origin web app.
 - Optionally, a Google Maps Android API key restricted to the package ID and signing certificate if the Admin map tiles are needed.
 
-Do not send account passwords, `FLASK_SECRET_KEY`, or database credentials in chat. Render generates and stores the Flask secret, and injects the managed database URL. `EXPO_PUBLIC_API_URL` is public and is bundled into the APK.
+Do not send account passwords, `FLASK_SECRET_KEY`, or database credentials in chat. Render generates and stores the Flask secret. Store the Neon connection string only in Render's `DATABASE_URL` environment variable. `EXPO_PUBLIC_API_URL` is public and is bundled into the APK.
 
 ### Deployment sequence
 
-1. Keep `backend\attendance.db` private and unchanged. Create a private source repository and ensure its first commit excludes local databases, secrets, APKs, and generated build files.
-2. In Render, create a Blueprint from that repository and review the service/database region and paid plans before confirming. This deploys the app and creates a new, empty PostgreSQL database; it does not migrate SQLite records.
-3. Before allowing users to sign in, separately back up and review the SQLite-to-PostgreSQL import plan below. Only after explicit approval, create the schema on the new, empty managed database with `python -m alembic upgrade head` using its `DATABASE_URL` securely. Do not run migrations against a data-bearing database without a reviewed plan and approval. The Render blueprint intentionally does not run migrations automatically.
-4. Perform the approved data import and verification before switching users. Keep the original SQLite file untouched as a recovery source.
-5. After Render deploys, obtain the actual HTTPS service URL from its dashboard and verify `https://<actual-service-host>/api/health` returns HTTP 200 and JSON status `success`. The value in that code example is a placeholder, not a deployment URL. This health check confirms database connectivity only; it does not prove that the schema or imported records are ready.
-6. Add the actual URL to the Expo project's `production` environment as `EXPO_PUBLIC_API_URL`. Build and test the APK using the steps in [mobile_app README](mobile_app/README.md).
+1. Keep `backend\attendance.db` private and unchanged. This deployment setup never copies or modifies the SQLite file.
+2. Create a Neon Free PostgreSQL project. The Render Blueprint prompts for `DATABASE_URL`; enter Neon's connection string there and keep it out of source control and chat.
+3. In Render, create a Blueprint from the repository and confirm the web service is on the Free plan. The Blueprint no longer creates a Render database or any paid resource.
+4. Before allowing users to sign in, separately review the SQLite-to-PostgreSQL import plan below. Only after explicit approval, initialize the new PostgreSQL schema. Do not migrate or change any records as part of deployment without approval.
+5. After Render deploys, obtain the actual HTTPS service URL from its dashboard and verify `/api/health` returns HTTP 200 and JSON status `success`. Do not guess or invent the URL. This health check confirms database connectivity only; it does not prove that existing SQLite records were imported.
+6. Add the actual URL to the Expo project's `production` environment as `EXPO_PUBLIC_API_URL`. Build a fresh APK only after the real endpoint passes its health check; then inspect and test that APK.
 
 ### SQLite inspection and safe migration plan
 

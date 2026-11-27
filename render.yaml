@@ -3,7 +3,7 @@ services:
     name: daymark-attendance-api
     runtime: python
     region: singapore
-    plan: 0.5c-512mb
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 backend.app:app
     healthCheckPath: /api/health
@@ -13,18 +13,8 @@ services:
       - key: FLASK_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        fromDatabase:
-          name: daymark-attendance-db
-          property: connectionString
+        sync: false
       - key: OFFICE_TIMEZONE
         value: Asia/Kolkata
       - key: OFFICIAL_CHECK_IN_TIME
         value: "09:30"
-
-databases:
-  - name: daymark-attendance-db
-    databaseName: daymark_attendance
-    user: daymark_attendance
-    region: singapore
-    plan: 0.1c-256mb
-    diskSizeGB: 1
