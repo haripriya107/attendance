@@ -13,7 +13,7 @@ TEST_DATABASE_URL = os.environ.get("ATTENDANCE_TEST_DATABASE_URL", "").strip()
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 
 from backend.postgres import (
     validate_test_database_url,
@@ -201,22 +201,34 @@ class AttendanceAppTests(unittest.TestCase):
         self.assertNotIn(b"sensitive diagnostic detail", response.data)
 
     def test_postgresql_schema_includes_legacy_tables_and_office_defaults(self):
-        with closing(self.db_connection()) as conn:
-            tables = {
-                row[0] for row in conn.execute(
-                    "SELECT table_name FROM information_schema.tables "
-                    "WHERE table_schema = current_schema()"
-                )
-            }
-            office_location = conn.execute(
+        migration_config = Config(
+            str(Path(__file__).resolve().parents[2] / "alembic.ini")
+        )
+        with patch.dict(os.environ, {
+            "ATTENDANCE_TEST_DATABASE_URL": self.database_url,
+            "ATTENDANCE_TEST_SCHEMA": self.schema,
+        }):
+            command.upgrade(migration_config, "head")
+            command.upgrade(migration_config, "head")
+
+        engine = self.app.extensions["database_engine"]
+        with engine.connect() as conn:
+            tables = set(inspect(conn).get_table_names())
+            office_location = conn.execute(text(
                 "SELECT id, radius_meters FROM office_location_settings WHERE id = 1"
-            ).fetchone()
+            )).one()
+            employee_count = conn.execute(
+                text("SELECT count(*) FROM employees")
+            ).scalar_one()
         self.assertTrue({
             "employees", "attendance", "leaves", "departments",
             "office_location_settings", "announcements", "notifications",
             "alembic_version",
         }.issubset(tables))
         self.assertEqual(office_location, (1, 200.0))
+        self.assertEqual(employee_count, 2)
+        login = self.login("admin@example.com", "admin-pass-123")
+        self.assertEqual(login.status_code, 200)
 
     def test_shared_login_redirects_by_role_and_protects_admin_routes(self):
         response = self.login("taylor@example.com", "employee-pass-123")

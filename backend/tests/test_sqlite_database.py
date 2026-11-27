@@ -71,6 +71,32 @@ class SQLiteDatabaseTests(unittest.TestCase):
             finally:
                 app.extensions[DATABASE_ENGINE_EXTENSION].dispose()
 
+    def test_health_rejects_an_incomplete_sqlite_schema(self):
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as directory:
+            database_url = URL.create(
+                "sqlite+pysqlite",
+                database=str(Path(directory) / "empty.db"),
+            )
+            app = self.create_app({
+                "TESTING": True,
+                "SECRET_KEY": "sqlite-test-secret",
+                "DATABASE_URL": database_url,
+            })
+            try:
+                response = app.test_client().get("/api/health")
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(
+                    response.json,
+                    {
+                        "status": "error",
+                        "message": "Database schema unavailable.",
+                    },
+                )
+            finally:
+                app.extensions[DATABASE_ENGINE_EXTENSION].dispose()
+
 
 if __name__ == "__main__":
     unittest.main()

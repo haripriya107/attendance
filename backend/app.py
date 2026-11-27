@@ -4,6 +4,7 @@ from urllib.parse import urlsplit
 
 import click
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from sqlalchemy import inspect
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from werkzeug.security import generate_password_hash
 
@@ -22,6 +23,15 @@ from backend.timeutils import office_timezone
 
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+REQUIRED_DATABASE_TABLES = frozenset({
+    "employees",
+    "attendance",
+    "leaves",
+    "departments",
+    "office_location_settings",
+    "announcements",
+    "notifications",
+})
 
 
 def create_app(test_config=None):
@@ -217,9 +227,18 @@ def create_app(test_config=None):
         try:
             with database_connection() as conn:
                 execute(conn, "SELECT 1")
+                missing_tables = REQUIRED_DATABASE_TABLES - set(
+                    inspect(conn).get_table_names()
+                )
         except SQLAlchemyError:
             app.logger.exception("Health check could not access the database.")
             return jsonify({"status": "error", "message": "Database unavailable."}), 503
+        if missing_tables:
+            app.logger.error("Health check found an incomplete database schema.")
+            return jsonify({
+                "status": "error",
+                "message": "Database schema unavailable.",
+            }), 503
         return jsonify({"status": "success", "message": "Attendance API is ready."})
 
     @app.cli.command("create-admin")

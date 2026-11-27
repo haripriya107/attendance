@@ -20,7 +20,7 @@ Without `DATABASE_URL`, local development uses the existing SQLite file. Do not 
 
 ## Render deployment preparation
 
-`render.yaml` defines a free Render web service using the existing Gunicorn command and public `/api/health` check. Render provides HTTPS and a stable public service URL. `DATABASE_URL` is intentionally supplied as a secret in the Render dashboard, so the blueprint does not create a paid (or expiring free Render) database. The lowest-cost option is Render Free for Flask plus Neon Free PostgreSQL.
+`render.yaml` defines a free Render web service that runs `alembic upgrade head` before Gunicorn and exposes the public `/api/health` check. The versioned migrations create the PostgreSQL schema before the app serves requests; they are repeatable and do not import SQLite records or create an administrator. Render provides HTTPS and a stable public service URL. `DATABASE_URL` is intentionally supplied as a secret in the Render dashboard, so the blueprint does not create a paid (or expiring free Render) database. The lowest-cost option is Render Free for Flask plus Neon Free PostgreSQL.
 
 Both free tiers have limits and are not an uptime-guaranteed production setup. Render spins down an idle free web service after 15 minutes; waking it can take about one minute, and its local filesystem is ephemeral. Neon Free compute scales to zero and has usage/storage limits and no production SLA. Do not store application data on the Render filesystem. A stable HTTPS URL does not guarantee that the first request after idle will respond quickly enough for the current APK. For always-on service and production-grade availability, paid hosting is required.
 
@@ -43,15 +43,15 @@ Do not send account passwords, `FLASK_SECRET_KEY`, or database credentials in ch
 1. Keep `backend\attendance.db` private and unchanged. This deployment setup never copies or modifies the SQLite file.
 2. Create a Neon Free PostgreSQL project. The Render Blueprint prompts for `DATABASE_URL`; enter Neon's connection string there and keep it out of source control and chat.
 3. In Render, create a Blueprint from the repository and confirm the web service is on the Free plan. The Blueprint no longer creates a Render database or any paid resource.
-4. Before allowing users to sign in, separately review the SQLite-to-PostgreSQL import plan below. Only after explicit approval, initialize the new PostgreSQL schema. Do not migrate or change any records as part of deployment without approval.
-5. After Render deploys, obtain the actual HTTPS service URL from its dashboard and verify `/api/health` returns HTTP 200 and JSON status `success`. Do not guess or invent the URL. This health check confirms database connectivity only; it does not prove that existing SQLite records were imported.
+4. On service start, Render applies pending Alembic schema migrations before Gunicorn starts. This creates tables only; it does not import SQLite records or create an admin account. Review the separate SQLite-to-PostgreSQL import plan below before moving existing users or records.
+5. After Render deploys, obtain the actual HTTPS service URL from its dashboard and verify `/api/health` returns HTTP 200 and JSON status `success`. Do not guess or invent the URL. The health check confirms database connectivity and required application tables, but does not prove that SQLite records were imported.
 6. Add the actual URL to the Expo project's `production` environment as `EXPO_PUBLIC_API_URL`. Build a fresh APK only after the real endpoint passes its health check; then inspect and test that APK.
 
 ### SQLite inspection and safe migration plan
 
 The existing database was inspected read-only: `PRAGMA integrity_check` returned `ok`. It contains 3 employee rows (including admin/employee accounts), 7 attendance rows, 2 leave rows, 0 department rows, 2 notification rows, 0 announcement rows, and 1 office-location settings row. The schema also includes `employees`, `attendance`, `leaves`, `departments`, `announcements`, `notifications`, and `office_location_settings`.
 
-The original PostgreSQL baseline omitted `announcements` and `notifications`; the new additive Alembic revision adds those tables and their constraints/indexes. No migration or import was run. For a safe cutover:
+The PostgreSQL Alembic revisions create `employees` (including both admin and employee roles), `attendance`, `leaves`, `departments`, `office_location_settings`, `announcements`, and `notifications`, plus the `alembic_version` tracking table. The revisions add schema only; they do not import SQLite records or create administrator accounts. The baseline inserts its default office-location settings row only when that table is first created. For a safe cutover:
 
 1. Make a separate verified backup copy of the SQLite database without replacing or editing `backend\attendance.db`; temporarily stop writes during the final snapshot.
 2. Apply the schema to a fresh/staging PostgreSQL database first. Transfer every table, preserving primary keys, foreign keys, employee roles, password hashes, attendance and leave values, notification event keys/read flags, announcements, and the configured office coordinates/radius. The baseline seeds an unconfigured office-location row with ID 1; update that row with the SQLite settings rather than trying to insert a second row. Do not reset passwords or import only a subset.
